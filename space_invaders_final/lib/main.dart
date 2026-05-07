@@ -432,6 +432,7 @@ class _GameScreenState extends State<GameScreen> {
     }
     _isGameOver = true;
     _loop?.cancel();
+    await _musicPlayer.stop();
     await _playSfx(_gameOverSfxPlayer, 'game_over.mp3', volume: 0.9);
     await ScoreStore.saveScore(_score);
     if (mounted) {
@@ -455,6 +456,7 @@ class _GameScreenState extends State<GameScreen> {
       _spawnWave();
       _loop = Timer.periodic(const Duration(milliseconds: 16), (_) => _tick());
     });
+    unawaited(_musicPlayer.play(AssetSource('audio/fastinvader1.wav')));
   }
 
   Future<void> _startDamageBlink() async {
