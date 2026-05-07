@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() {
   runApp(const SpaceInvadersApp());
@@ -717,21 +719,41 @@ class EnemyBullet {
 }
 
 class ScoreStore {
-  static const String _scoreKey = 'high_scores';
+  static const String _fileName = 'high_scores.json';
+
+  static Future<File> _getScoreFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/$_fileName');
+  }
 
   static Future<List<int>> readScores() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_scoreKey) ?? <String>[];
-    final scores = raw.map(int.parse).toList()..sort((a, b) => b.compareTo(a));
-    return scores;
+    try {
+      final file = await _getScoreFile();
+      if (!await file.exists()) {
+        return <int>[];
+      }
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) {
+        return <int>[];
+      }
+      final decoded = jsonDecode(content);
+      if (decoded is! List) {
+        return <int>[];
+      }
+      final scores = decoded.whereType<num>().map((e) => e.toInt()).toList()
+        ..sort((a, b) => b.compareTo(a));
+      return scores;
+    } catch (_) {
+      return <int>[];
+    }
   }
 
   static Future<void> saveScore(int score) async {
-    final prefs = await SharedPreferences.getInstance();
     final existing = await readScores();
     existing.add(score);
     existing.sort((a, b) => b.compareTo(a));
-    final topTen = existing.take(10).map((e) => e.toString()).toList();
-    await prefs.setStringList(_scoreKey, topTen);
+    final topTen = existing.take(10).toList();
+    final file = await _getScoreFile();
+    await file.writeAsString(jsonEncode(topTen));
   }
 }
